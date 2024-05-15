@@ -3,7 +3,6 @@ package rotatelogs_test
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -12,9 +11,8 @@ import (
 	"time"
 
 	"github.com/jonboulle/clockwork"
-	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	rotatelogs "github.com/tl-tek/file-rotatelogs"
 )
 
 func TestSatisfiesIOWriter(t *testing.T) {
@@ -84,7 +82,7 @@ func TestLogRotate(t *testing.T) {
 		i := i   // avoid lint errors
 		tc := tc // avoid lint errors
 		t.Run(tc.Name, func(t *testing.T) {
-			dir, err := ioutil.TempDir("", fmt.Sprintf("file-rotatelogs-test%d", i))
+			dir, err := os.MkdirTemp("", fmt.Sprintf("file-rotatelogs-test%d", i))
 			if !assert.NoError(t, err, "creating temporary directory should succeed") {
 				return
 			}
@@ -121,7 +119,7 @@ func TestLogRotate(t *testing.T) {
 				t.Errorf("Could not get filename %s", fn)
 			}
 
-			content, err := ioutil.ReadFile(fn)
+			content, err := os.ReadFile(fn)
 			if err != nil {
 				t.Errorf("Failed to read file %s: %s", fn, err)
 			}
@@ -153,7 +151,7 @@ func TestLogRotate(t *testing.T) {
 				t.Errorf(`New file name and old file name should not match ("%s" != "%s")`, fn, newfn)
 			}
 
-			content, err = ioutil.ReadFile(newfn)
+			content, err = os.ReadFile(newfn)
 			if err != nil {
 				t.Errorf("Failed to read file %s: %s", newfn, err)
 			}
@@ -186,14 +184,14 @@ func CreateRotationTestFile(dir string, base time.Time, d time.Duration, n int) 
 		// %Y%m%d%H%M%S
 		suffix := timestamp.Format("20060102150405")
 		path := filepath.Join(dir, "log"+suffix)
-		ioutil.WriteFile(path, []byte("rotation test file\n"), os.ModePerm)
+		os.WriteFile(path, []byte("rotation test file\n"), os.ModePerm)
 		os.Chtimes(path, timestamp, timestamp)
 		timestamp = timestamp.Add(d)
 	}
 }
 
 func TestLogRotationCount(t *testing.T) {
-	dir, err := ioutil.TempDir("", "file-rotatelogs-rotationcount-test")
+	dir, err := os.MkdirTemp("", "file-rotatelogs-rotationcount-test")
 	if !assert.NoError(t, err, "creating temporary directory should succeed") {
 		return
 	}
@@ -286,7 +284,7 @@ func TestLogRotationCount(t *testing.T) {
 }
 
 func TestLogSetOutput(t *testing.T) {
-	dir, err := ioutil.TempDir("", "file-rotatelogs-test")
+	dir, err := os.MkdirTemp("", "file-rotatelogs-test")
 	if err != nil {
 		t.Errorf("Failed to create temporary directory: %s", err)
 	}
@@ -309,7 +307,7 @@ func TestLogSetOutput(t *testing.T) {
 		t.Errorf("Could not get filename %s", fn)
 	}
 
-	content, err := ioutil.ReadFile(fn)
+	content, err := os.ReadFile(fn)
 	if err != nil {
 		t.Errorf("Failed to read file %s: %s", fn, err)
 	}
@@ -322,11 +320,11 @@ func TestLogSetOutput(t *testing.T) {
 func TestGHIssue16(t *testing.T) {
 	defer func() {
 		if v := recover(); v != nil {
-			assert.NoError(t, errors.Errorf("%s", v), "error should be nil")
+			assert.NoError(t, fmt.Errorf("%s", v), "error should be nil")
 		}
 	}()
 
-	dir, err := ioutil.TempDir("", "file-rotatelogs-gh16")
+	dir, err := os.MkdirTemp("", "file-rotatelogs-gh16")
 	if !assert.NoError(t, err, `creating temporary directory should succeed`) {
 		return
 	}
@@ -350,7 +348,7 @@ func TestGHIssue16(t *testing.T) {
 }
 
 func TestRotationGenerationalNames(t *testing.T) {
-	dir, err := ioutil.TempDir("", "file-rotatelogs-generational")
+	dir, err := os.MkdirTemp("", "file-rotatelogs-generational")
 	if !assert.NoError(t, err, `creating temporary directory should succeed`) {
 		return
 	}
@@ -436,7 +434,7 @@ func (f ClockFunc) Now() time.Time {
 }
 
 func TestGHIssue23(t *testing.T) {
-	dir, err := ioutil.TempDir("", "file-rotatelogs-generational")
+	dir, err := os.MkdirTemp("", "file-rotatelogs-generational")
 	if !assert.NoError(t, err, `creating temporary directory should succeed`) {
 		return
 	}
@@ -450,13 +448,13 @@ func TestGHIssue23(t *testing.T) {
 			Clock    rotatelogs.Clock
 		}{
 			{
-				Expected: filepath.Join(dir, strings.ToLower(strings.Replace(locName, "/", "_", -1))+".201806010000.log"),
+				Expected: filepath.Join(dir, strings.ToLower(strings.ReplaceAll(locName, "/", "_"))+".201806010000.log"),
 				Clock: ClockFunc(func() time.Time {
 					return time.Date(2018, 6, 1, 3, 18, 0, 0, loc)
 				}),
 			},
 			{
-				Expected: filepath.Join(dir, strings.ToLower(strings.Replace(locName, "/", "_", -1))+".201712310000.log"),
+				Expected: filepath.Join(dir, strings.ToLower(strings.ReplaceAll(locName, "/", "_"))+".201712310000.log"),
 				Clock: ClockFunc(func() time.Time {
 					return time.Date(2017, 12, 31, 23, 52, 0, 0, loc)
 				}),
@@ -465,7 +463,7 @@ func TestGHIssue23(t *testing.T) {
 		for _, test := range tests {
 			test := test
 			t.Run(fmt.Sprintf("location = %s, time = %s", locName, test.Clock.Now().Format(time.RFC3339)), func(t *testing.T) {
-				template := strings.ToLower(strings.Replace(locName, "/", "_", -1)) + ".%Y%m%d%H%M.log"
+				template := strings.ToLower(strings.ReplaceAll(locName, "/", "_")) + ".%Y%m%d%H%M.log"
 				rl, err := rotatelogs.New(
 					filepath.Join(dir, template),
 					rotatelogs.WithClock(test.Clock), // we're not using WithLocation, but it's the same thing
@@ -485,7 +483,7 @@ func TestGHIssue23(t *testing.T) {
 }
 
 func TestForceNewFile(t *testing.T) {
-	dir, err := ioutil.TempDir("", "file-rotatelogs-force-new-file")
+	dir, err := os.MkdirTemp("", "file-rotatelogs-force-new-file")
 	if !assert.NoError(t, err, `creating temporary directory should succeed`) {
 		return
 	}
@@ -522,8 +520,8 @@ func TestForceNewFile(t *testing.T) {
 				return
 			}
 			assert.FileExists(t, rl.CurrentFileName(), "file does not exist %s", rl.CurrentFileName())
-			content, err := ioutil.ReadFile(rl.CurrentFileName())
-			if !assert.NoError(t, err, "ioutil.ReadFile %s should succeed", rl.CurrentFileName()) {
+			content, err := os.ReadFile(rl.CurrentFileName())
+			if !assert.NoError(t, err, "os.ReadFile %s should succeed", rl.CurrentFileName()) {
 				return
 			}
 			str := fmt.Sprintf("Hello, World%d", i)
@@ -532,8 +530,8 @@ func TestForceNewFile(t *testing.T) {
 			}
 
 			assert.FileExists(t, baseFn, "file does not exist %s", baseFn)
-			content, err = ioutil.ReadFile(baseFn)
-			if !assert.NoError(t, err, "ioutil.ReadFile should succeed") {
+			content, err = os.ReadFile(baseFn)
+			if !assert.NoError(t, err, "os.ReadFile should succeed") {
 				return
 			}
 			if !assert.Equal(t, "Hello, World!", string(content), "read %s from file %s, not expected Hello, World!", string(content), baseFn) {
@@ -560,8 +558,8 @@ func TestForceNewFile(t *testing.T) {
 			rl.Write([]byte("Hello, World"))
 			rl.Write([]byte(fmt.Sprintf("%d", i)))
 			assert.FileExists(t, rl.CurrentFileName(), "file does not exist %s", rl.CurrentFileName())
-			content, err := ioutil.ReadFile(rl.CurrentFileName())
-			if !assert.NoError(t, err, "ioutil.ReadFile %s should succeed", rl.CurrentFileName()) {
+			content, err := os.ReadFile(rl.CurrentFileName())
+			if !assert.NoError(t, err, "os.ReadFile %s should succeed", rl.CurrentFileName()) {
 				return
 			}
 			str := fmt.Sprintf("Hello, World%d", i)
@@ -570,8 +568,8 @@ func TestForceNewFile(t *testing.T) {
 			}
 
 			assert.FileExists(t, baseFn, "file does not exist %s", baseFn)
-			content, err = ioutil.ReadFile(baseFn)
-			if !assert.NoError(t, err, "ioutil.ReadFile should succeed") {
+			content, err = os.ReadFile(baseFn)
+			if !assert.NoError(t, err, "os.ReadFile should succeed") {
 				return
 			}
 			if !assert.Equal(t, "Hello, World!", string(content), "read %s from file %s, not expected Hello, World!", string(content), baseFn) {

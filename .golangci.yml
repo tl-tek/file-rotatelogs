@@ -1,56 +1,73 @@
 run:
-
-linters-settings:
-  govet:
-    enable-all: true
-    disable:
-      - shadow
-
-linters:
-  enable-all: true
-  disable:
-    - gomnd
-    - gocritic
-    - lll
-    - gochecknoinits
-    - wsl
-    - nakedret
-    - funlen
-    - gochecknoglobals
-    - gocognit
-    - godox
-    - gocyclo
-    - dupl
-    - gosec
-    - testpackage
-    - godot
-    - nestif
-    - goerr113
+  timeout: 5m
+  modules-download-mode: readonly
 
 issues:
-  exclude-rules:
-    # not needed
-    - path: /*.go
-      text: "ST1003: should not use underscores in package names"
-      linters:
-        - stylecheck
-    - path: /*.go
-      text: "don't use an underscore in package name"
-      linters:
-        - golint
-    - path: /main.go
-      linters:
-        - errcheck
-    - path: internal/codegen/codegen.go
-      linters:
-        - errcheck
-    - path: /*_test.go
-      linters:
-        - errcheck
+  exclude-files:
+    - _test.go
 
-  # Maximum issues count per one linter. Set to 0 to disable. Default is 50.
-  max-issues-per-linter: 0
+linters:
+  disable-all: true
+  fast: false
+  enable:
+    - bodyclose
+    - dogsled
+    - durationcheck
+    - errcheck
+    - exportloopref
+    - govet
+    - gosimple
+    - gofmt
+    - gofumpt
+    - goconst
+    - goimports
+    - mnd
+    - gocyclo
+    - ineffassign
+    - lll
+    - prealloc
+    - revive
+    - staticcheck
+    - typecheck
+    - unused
+    - whitespace
+    - wastedassign
+    - unconvert
+    - misspell
 
-  # Maximum count of issues with the same text. Set to 0 to disable. Default is 3.
-  max-same-issues: 0
+  # don't enable:
+  # - asciicheck
+  # - scopelint
+  # - gochecknoglobals
+  # - gocognit
+  # - godot
+  # - godox
+  # - goerr113
+  # - interfacer
+  # - maligned
+  # - nestif
+  # - prealloc
+  # - testpackage
+  # - stylrcheck
+  # - wsl
 
+linters-settings:
+  whitespace:
+    multi-func: true
+  lll:
+    line-length: 160
+  mnd:
+    # don't include the "operation", "argument" and "assign"
+    checks:
+      - case
+      - condition
+      - return
+  goconst:
+    ignore-tests: true
+  gocyclo:
+    # recommend 10-20
+    min-complexity: 50
+  goimports:
+    local-prefixes: github.com/tl-tek # Put imports beginning with prefix after 3rd-party packages
+  misspell: # Finds commonly misspelled English words in comments
+    locale: US

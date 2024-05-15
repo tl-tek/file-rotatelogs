@@ -5,6 +5,7 @@
 package rotatelogs
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -14,9 +15,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lestrrat-go/file-rotatelogs/internal/fileutil"
-	strftime "github.com/lestrrat-go/strftime"
-	"github.com/pkg/errors"
+	"github.com/lestrrat-go/strftime"
+
+	"github.com/tl-tek/file-rotatelogs/internal/fileutil"
 )
 
 func (c clockFn) Now() time.Time {
@@ -33,7 +34,7 @@ func New(p string, options ...Option) (*RotateLogs, error) {
 
 	pattern, err := strftime.New(p)
 	if err != nil {
-		return nil, errors.Wrap(err, `invalid strftime pattern`)
+		return nil, fmt.Errorf(`invalid strftime pattern: %w`, err)
 	}
 
 	var clock Clock = Local
@@ -109,7 +110,7 @@ func (rl *RotateLogs) Write(p []byte) (n int, err error) {
 
 	out, err := rl.getWriterNolock(false, false)
 	if err != nil {
-		return 0, errors.Wrap(err, `failed to acquite target io.Writer`)
+		return 0, fmt.Errorf(`failed to acquite target io.Writer: %w`, err)
 	}
 
 	return out.Write(p)
@@ -170,11 +171,11 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 
 	fh, err := fileutil.CreateFile(filename)
 	if err != nil {
-		return nil, errors.Wrapf(err, `failed to create a new file %v`, filename)
+		return nil, fmt.Errorf(`failed to create a new file %v: %w`, filename, err)
 	}
 
 	if err := rl.rotateNolock(filename); err != nil {
-		err = errors.Wrap(err, "failed to rotate")
+		err = fmt.Errorf("failed to rotate: %w", err)
 		if bailOnRotateFail {
 			// Failure to rotate is a problem, but it's really not a great
 			// idea to stop your application just because you couldn't rename
@@ -255,7 +256,7 @@ func (rl *RotateLogs) Rotate() error {
 
 func (rl *RotateLogs) rotateNolock(filename string) error {
 	lockfn := filename + `_lock`
-	fh, err := os.OpenFile(lockfn, os.O_CREATE|os.O_EXCL, 0644)
+	fh, err := os.OpenFile(lockfn, os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
 		// Can't lock, just return
 		return err
@@ -282,26 +283,26 @@ func (rl *RotateLogs) rotateNolock(filename string) error {
 		if strings.Contains(rl.linkName, baseDir) {
 			tmp, err := filepath.Rel(linkDir, filename)
 			if err != nil {
-				return errors.Wrapf(err, `failed to evaluate relative path from %#v to %#v`, baseDir, rl.linkName)
+				return fmt.Errorf(`failed to evaluate relative path from %#v to %#v`, baseDir, rl.linkName)
 			}
 
 			linkDest = tmp
 		}
 
 		if err := os.Symlink(linkDest, tmpLinkName); err != nil {
-			return errors.Wrap(err, `failed to create new symlink`)
+			return fmt.Errorf(`failed to create new symlink: %w`, err)
 		}
 
 		// the directory where rl.linkName should be created must exist
 		_, err := os.Stat(linkDir)
 		if err != nil { // Assume err != nil means the directory doesn't exist
-			if err := os.MkdirAll(linkDir, 0755); err != nil {
-				return errors.Wrapf(err, `failed to create directory %s`, linkDir)
+			if err := os.MkdirAll(linkDir, 0o755); err != nil {
+				return fmt.Errorf(`failed to create directory %s: %w`, linkDir, err)
 			}
 		}
 
 		if err := os.Rename(tmpLinkName, rl.linkName); err != nil {
-			return errors.Wrap(err, `failed to rename new symlink`)
+			return fmt.Errorf(`failed to rename new symlink: %w`, err)
 		}
 	}
 
@@ -353,7 +354,7 @@ func (rl *RotateLogs) rotateNolock(filename string) error {
 		toUnlink = toUnlink[:len(toUnlink)-int(rl.rotationCount)]
 	}
 
-	if len(toUnlink) <= 0 {
+	if len(toUnlink) == 0 {
 		return nil
 	}
 

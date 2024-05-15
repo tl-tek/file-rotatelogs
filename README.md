@@ -7,11 +7,6 @@ Provide an `io.Writer` that periodically rotates log files from within the appli
 
 [![GoDoc](https://godoc.org/github.com/lestrrat-go/file-rotatelogs?status.svg)](https://godoc.org/github.com/lestrrat-go/file-rotatelogs)
 
-# WARNINGS
-
-THIS PROJECT HAS BEEN ARCHIVED. IT WILL NOT RECEIVE UPDATES, THE AUTHOR DOES NOT WISH TO MAINTAIN OR SUPPORT IT.
-IN SHORT, DO NOT USE THIS PROJECT.
-
 # SYNOPSIS
 
 ```go
@@ -20,7 +15,7 @@ import (
   "net/http"
 
   apachelog "github.com/lestrrat-go/apache-logformat"
-  rotatelogs "github.com/lestrrat-go/file-rotatelogs"
+  rotatelogs "github.com/tl-tek/file-rotatelogs"
 )
 
 func main() {
@@ -54,7 +49,7 @@ to setup logrotate!
 To install, simply issue a `go get`:
 
 ```
-go get github.com/lestrrat-go/file-rotatelogs
+go get github.com/tl-tek/file-rotatelogs
 ```
 
 It's normally expected that this library is used with some other
@@ -64,7 +59,7 @@ such as `github.com/lestrrat-go/apache-logformat`.
 ```go
 import(
   "log"
-  "github.com/lestrrat-go/file-rotatelogs"
+  "github.com/tl-tek/file-rotatelogs"
 )
 
 func main() {
